@@ -1,1 +1,188 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Snake and Ball Game with WASD Controls</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+        #myCanvas {
+            border: 2px solid #333;
+        }
+        #gameOverScreen {
+            position: absolute;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="myCanvas" width="480" height="270"></canvas>
+    <div id="gameOverScreen">
+        <h2>Game Over</h2>
+        <p>Your Score: <span id="finalScore"></span></p>
+        <button onclick="restartGame()">Play Again</button>
+    </div>
 
+    <script>
+        var snake;
+        var ball;
+        var gridSize = 10;
+        var score = 0;
+        var gameOver = false;
+
+        function startGame() {
+            snake = new Snake();
+            ball = new Ball();
+            score = 0;
+            gameOver = false;
+            document.getElementById('gameOverScreen').style.display = 'none';
+            myGameArea.start();
+        }
+
+        var myGameArea = {
+            canvas : document.getElementById("myCanvas"),
+            start : function() {
+                this.context = this.canvas.getContext("2d");
+                this.frameNo = 0;
+                this.interval = requestAnimationFrame(updateGameArea);
+                window.addEventListener('keydown', handleKeyPress);
+            },
+            clear : function() {
+                this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            },
+            draw : function() {
+                this.clear();
+                snake.draw();
+                ball.draw();
+                this.drawScore();
+            },
+            drawScore : function() {
+                this.context.fillStyle = "black";
+                this.context.font = "20px Arial";
+                this.context.fillText("Score: " + score, 10, 30);
+            },
+            stop : function() {
+                cancelAnimationFrame(this.interval);
+            }
+        }
+
+        function updateGameArea() {
+            if (!gameOver) {
+                myGameArea.frameNo += 1;
+                if (myGameArea.frameNo % 10 === 0) {  // Adjust this value to change snake speed
+                    snake.move();
+                    if (snake.checkCollision()) {
+                        gameOver = true;
+                        showGameOverScreen();
+                    }
+                }
+                myGameArea.draw();
+                myGameArea.interval = requestAnimationFrame(updateGameArea);
+            }
+        }
+
+        function Snake() {
+            this.body = [{x: 24, y: 13}];
+            this.direction = {x: 1, y: 0};  // Start moving right
+            
+            this.move = function() {
+                var head = {x: this.body[0].x + this.direction.x, y: this.body[0].y + this.direction.y};
+                this.body.unshift(head);
+                
+                if (head.x === ball.x && head.y === ball.y) {
+                    score++;
+                    ball.respawn();
+                } else {
+                    this.body.pop();
+                }
+
+                // Wrap around screen edges
+                this.body[0].x = (this.body[0].x + 48) % 48;  // 480 / 10 = 48
+                this.body[0].y = (this.body[0].y + 27) % 27;  // 270 / 10 = 27
+            }
+
+            this.draw = function() {
+                ctx = myGameArea.context;
+                ctx.fillStyle = "green";
+                for (var i = 0; i < this.body.length; i++) {
+                    ctx.fillRect(this.body[i].x * gridSize, this.body[i].y * gridSize, gridSize - 1, gridSize - 1);
+                }
+            }
+
+            this.changeDirection = function(newDirection) {
+                // Prevent going backwards
+                if (this.direction.x === -newDirection.x && this.direction.y === -newDirection.y) {
+                    return;
+                }
+                this.direction = newDirection;
+            }
+
+            this.checkCollision = function() {
+                var head = this.body[0];
+                // Check collision with body
+                for (var i = 1; i < this.body.length; i++) {
+                    if (head.x === this.body[i].x && head.y === this.body[i].y) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+        }
+
+        function Ball() {
+            this.respawn = function() {
+                this.x = Math.floor(Math.random() * (myGameArea.canvas.width / gridSize));
+                this.y = Math.floor(Math.random() * (myGameArea.canvas.height / gridSize));
+            }
+            
+            this.respawn();
+
+            this.draw = function() {
+                ctx = myGameArea.context;
+                ctx.fillStyle = "red";
+                ctx.fillRect(this.x * gridSize, this.y * gridSize, gridSize - 1, gridSize - 1);
+            }
+        }
+
+        function handleKeyPress(e) {
+            if (gameOver) return;
+            switch(e.key.toLowerCase()) {
+                case 'w':
+                    snake.changeDirection({x: 0, y: -1});
+                    break;
+                case 's':
+                    snake.changeDirection({x: 0, y: 1});
+                    break;
+                case 'a':
+                    snake.changeDirection({x: -1, y: 0});
+                    break;
+                case 'd':
+                    snake.changeDirection({x: 1, y: 0});
+                    break;
+            }
+        }
+
+        function showGameOverScreen() {
+            document.getElementById('gameOverScreen').style.display = 'block';
+            document.getElementById('finalScore').textContent = score;
+            myGameArea.stop();
+        }
+
+        function restartGame() {
+            startGame();
+        }
+
+        startGame();
+    </script>
+</body>
+</html> 
